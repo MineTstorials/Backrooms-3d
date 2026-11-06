@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>BACKROOMS</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="view"></canvas>
+<div id="tint"></div>
+<div id="scan"></div>
+<div id="vig"></div>
+<div id="dangerVig"></div>
+<div id="boostVig"></div>
+<div id="waterOverlay"></div>
+<div id="dirMarkers"></div>
+<canvas id="radarCanvas" width="140" height="140"></canvas>
+<div id="screamer"><img id="screamerImg" alt=""></div>
+
+<div id="hud">
+  <b id="fps">--</b> FPS &nbsp;·&nbsp; <span id="levelName">LEVEL 0</span>
+  <div class="score">SCORE: <span id="scoreVal">0</span></div>
+  <div class="energy">ENERGY: <span id="energyVal">0</span></div>
+  <div class="event" id="eventMsg"></div>
+  <div id="staminaContainer"><div id="staminaFill"></div></div>
+</div>
+
+<div id="inventory">
+  <div class="slot" data-slot="0"><span class="num">1</span><div class="icon"></div><span class="cnt"></span></div>
+  <div class="slot" data-slot="1"><span class="num">2</span><div class="icon"></div><span class="cnt"></span></div>
+  <div class="slot" data-slot="2"><span class="num">3</span><div class="icon"></div><span class="cnt"></span></div>
+  <div class="slot" data-slot="3"><span class="num">4</span><div class="icon"></div><span class="cnt"></span></div>
+  <div class="slot" data-slot="4"><span class="num">5</span><div class="icon"></div><span class="cnt"></span></div>
+</div>
+
+<div id="leaderboard">
+  <h2>LEADERBOARD</h2>
+  <table id="lbTable"></table>
+  <div class="close-hint">нажмите L чтобы закрыть</div>
+</div>
+
+<div id="console">
+  <div id="consoleLog"></div>
+  <div id="consoleInput">
+    <span>/</span><input type="text" id="consoleField" autocomplete="off" spellcheck="false" placeholder="команда... (help для списка)">
+  </div>
+</div>
+
+<div id="start">
+  <h1>THE BACKROOMS</h1>
+  <div class="sub">LEVEL 0 → LEVEL 1 → LEVEL 2</div>
+  <div class="go">[ НАЖМИТЕ, ЧТОБЫ ПРОВАЛИТЬСЯ ]</div>
+  <div class="keys">
+    WASD — идти&nbsp;·&nbsp;SHIFT — бежать&nbsp;·&nbsp;1-5 — слот&nbsp;·&nbsp;E — использовать&nbsp;·&nbsp;F — бросить/ударить
+  </div>
+  <div class="keys">
+    L — лидерборд&nbsp;·&nbsp;/ — консоль&nbsp;·&nbsp;ESC — пауза
+  </div>
+  <div class="keys" style="opacity:.28;margin-top:2px">
+    150 очков → Level 1. 300 очков → Level 2 (Poolrooms).
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
