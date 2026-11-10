@@ -807,7 +807,7 @@ let img, buf, wallTop, wallBot, depth;
 function resize() {
   const aspect = window.innerWidth / window.innerHeight;
   // Poolrooms рендерится в более низком внутреннем разрешении: CSS растягивает canvas,
-  // а тяжёлый проход по пикселям обрабатывает примерно на 44% меньше точек.
+  // а тяжёлый проход обрабатывает примерно на 56% меньше пикселей.
   ch = currentLevel === 2 ? 160 : 240;
   cw = Math.round(ch * aspect);
   cw = cw < 180 ? 180 : cw > 780 ? 780 : cw;
@@ -2485,7 +2485,7 @@ function update(dt, now) {
   const smoothFactor = Math.min(1, dt * 20);
   player.yaw += (targetYaw - player.yaw) * smoothFactor;
 
-  const scoreRate = currentLevel === 2 ? SCORE_PER_SEC_L2 : currentLevel === 1 ? SCORE_PER_SEC_L1 : SCORE_PER_SEC_L0;
+  const scoreRate = currentLevel === 3 ? 4 : currentLevel === 2 ? SCORE_PER_SEC_L2 : currentLevel === 1 ? SCORE_PER_SEC_L1 : SCORE_PER_SEC_L0;
   score += scoreRate * dt;
 
   /* новая комната */
@@ -2494,7 +2494,7 @@ function update(dt, now) {
   if (!visitedRooms.has(roomKey)) { visitedRooms.add(roomKey); score += SCORE_PER_ROOM; }
 
   if (!portalActive) {
-    const targetScore = currentLevel === 0 ? PORTAL_SCORE_L1 : currentLevel === 1 ? PORTAL_SCORE_L2 : Infinity;
+    const targetScore = currentLevel === 0 ? PORTAL_SCORE_L1 : currentLevel === 1 ? PORTAL_SCORE_L2 : currentLevel === 2 ? PORTAL_SCORE_L3 : Infinity;
     if (score >= targetScore) activatePortal();
   }
 
@@ -2735,7 +2735,7 @@ function drawRadarOverlay() {
    ═══════════════════════════════════════════════════════════ */
 const startEl = document.getElementById('start');
 let running = false;
-let last = 0, fpsAcc = 0, fpsCnt = 0, fpsT = 0;
+let last = 0, fpsCnt = 0, fpsT = 0;
 
 startEl.addEventListener('click', () => {
   startEl.classList.add('hidden');
