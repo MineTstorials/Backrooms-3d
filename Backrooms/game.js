@@ -142,6 +142,7 @@ let timeScale = 1.0;
 
 const eventSys = { nextTimer: 40 + Math.random() * 20, active: null, timeLeft: 0 };
 const noisePulse = { x: 0, y: 0, t: 0 };
+const poolCurrent = { timer: 26, active: 0, angle: 0 };
 
 /* ═══════════════════════════════════════════════════════════
    МИР
@@ -204,6 +205,14 @@ const wallTexL2  = new Uint32Array(TEX * TEX);
 const floorTexL2 = new Uint32Array(TEX * TEX);   // плитка, БЕЗ воды
 const ceilTexL2  = new Uint32Array(TEX * TEX);
 const waterOverlayTexL2 = new Uint32Array(TEX * TEX); // вода — накладывается сверху
+const WATER_CAUSTIC_FRAMES = 8;
+const waterCausticLUT = new Uint8Array(WATER_CAUSTIC_FRAMES * TEX * TEX);
+for (let frame = 0; frame < WATER_CAUSTIC_FRAMES; frame++) {
+  for (let y = 0; y < TEX; y++) for (let x = 0; x < TEX; x++) {
+    const wave = Math.sin(x * 0.19 + y * 0.13 + frame * Math.PI * 2 / WATER_CAUSTIC_FRAMES);
+    waterCausticLUT[frame * TEX * TEX + y * TEX + x] = 224 + ((wave + 1) * 15.5);
+  }
+}
 
 (function buildTextures() {
   for (let y = 0; y < TEX; y++) {
@@ -793,7 +802,9 @@ let img, buf, wallTop, wallBot, depth;
 
 function resize() {
   const aspect = window.innerWidth / window.innerHeight;
-  ch = 240;
+  // Poolrooms рендерится в более низком внутреннем разрешении: CSS растягивает canvas,
+  // а тяжёлый проход по пикселям обрабатывает примерно на 44% меньше точек.
+  ch = currentLevel === 2 ? 160 : 240;
   cw = Math.round(ch * aspect);
   cw = cw < 180 ? 180 : cw > 780 ? 780 : cw;
   canvas.width = cw;
@@ -1377,6 +1388,7 @@ function onCaught() {
     player.yaw = Math.random() * Math.PI * 2;
     targetYaw = player.yaw;
     stamina.cur = STAM_MAX; stamina.exhausted = false; boost.t = 0;
+  poolCurrent.active = 0; poolCurrent.timer = 22 + Math.random() * 10;
     beer.t = 0; radar.t = 0; shield = false;
   }, 300);
 }
@@ -1475,6 +1487,7 @@ function checkPortal() {
 }
 function resetToLevel(lvl) {
   currentLevel = lvl;
+  resize();
   portalActive = false;
   portalMsgTimer = 0;
   visitedRooms.clear();
@@ -1974,6 +1987,7 @@ function render() {
   if (isL2) fl = 0.97 + 0.03 * Math.sin(performance.now() * 0.001);
 
   waterOverlay.style.opacity = isL2 ? '1' : '0';
+  waterOverlay.classList.toggle('pool-surge', isL2 && poolCurrent.active > 0);
 
   const fogD = isL2 ? 0.03 : isL1 ? 0.07 : FOG_D;
   const fogR = isL2 ? 35 : isL1 ? 18 : FOG_R;
@@ -2053,6 +2067,7 @@ function render() {
   const t = performance.now();
   /* анимация воды — один общий фазовый сдвиг */
   const waterPhase = t * 0.0015;
+  const causticFrame = ((t * 1.1) | 0) & (WATER_CAUSTIC_FRAMES - 1);
 
   for (let y = 0; y < H; y++) {
     const dy = y - horizon;
@@ -2117,7 +2132,8 @@ function render() {
           r = (r * 0.55 + wr * 0.45);
           g = (g * 0.55 + wg * 0.45);
           b = (b * 0.55 + wb2 * 0.45);
-          const caustic = 0.88 + 0.12 * Math.sin(fx * 2.5 + fy * 1.8 + waterPhase * 3);
+          // Готовая таблица бликов заменяет дорогой Math.sin на каждом пикселе.
+          const caustic = waterCausticLUT[causticFrame * TEX * TEX + (ty << TSHIFT) + tx] / 255;
           r *= caustic; g *= caustic; b *= caustic;
         } else {
           const ft = isL1 ? floorTexL1 : floorTex;
@@ -2477,6 +2493,27 @@ function update(dt, now) {
   updateThrownCans(dt);
   updateEvents(dt);
 
+  // Периодическое течение Poolrooms: предупреждает игрока и сносит его по залу.
+  if (currentLevel === 2) {
+    if (poolCurrent.active > 0) {
+      poolCurrent.active = Math.max(0, poolCurrent.active - dt);
+      if (poolCurrent.active === 0) {
+        poolCurrent.timer = 27 + Math.random() * 18;
+        if (eventSys.active === null) eventMsgEl.textContent = '≈ ТЕЧЕНИЕ УСПОКОИЛОСЬ';
+      }
+    } else {
+      poolCurrent.timer -= dt;
+      if (poolCurrent.timer <= 0) {
+        poolCurrent.active = 6.5;
+        poolCurrent.angle = Math.random() * Math.PI * 2;
+        if (eventSys.active === null) eventMsgEl.textContent = '⚠ СИЛЬНОЕ ТЕЧЕНИЕ! ДЕРЖИСЬ!';
+      }
+    }
+  } else {
+    poolCurrent.active = 0;
+    poolCurrent.timer = 26;
+  }
+
   if (radar.t > 0) radar.t -= dt;
   if (beer.t > 0) beer.t -= dt;
   if (beer.punchCd > 0) beer.punchCd -= dt;
@@ -2546,6 +2583,14 @@ function update(dt, now) {
   if (keys.d) { mx -= sn; my += cs; }
   const len = Math.sqrt(mx * mx + my * my);
   const moving = len > 0;
+  if (currentLevel === 2 && poolCurrent.active > 0) {
+    const drift = 0.72 * dt * timeScale;
+    const dx = Math.cos(poolCurrent.angle) * drift;
+    const dy = Math.sin(poolCurrent.angle) * drift;
+    if (canWalk(player.x + dx, player.y)) player.x += dx;
+    if (canWalk(player.x, player.y + dy)) player.y += dy;
+    if (moving && canSprint) stamina.cur = Math.max(0, stamina.cur - 5 * dt);
+  }
   if (moving) {
     mx = mx / len * speed; my = my / len * speed;
     if (canSprint) { noisePulse.x = player.x; noisePulse.y = player.y; noisePulse.t = 1.15; }
