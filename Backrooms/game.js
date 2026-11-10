@@ -1244,6 +1244,7 @@ function updateMonster(dt, now) {
   const isL2 = currentLevel === 2, isL1 = currentLevel === 1 || currentLevel === 3;
   const monSpeed = currentLevel === 3 ? L3_MON_SPEED : isL2 ? L2_MON_SPEED : isL1 ? L1_MON_SPEED : MON_SPEED;
   const sprintMult = currentLevel === 3 ? L3_MON_SPRINT_MULT : isL2 ? L2_MON_SPRINT_MULT : isL1 ? L1_MON_SPRINT_MULT : MON_SPRINT_MULT;
+  const alarmMult = currentLevel === 3 && crimsonAlarm.active > 0 ? 1.35 : 1.0;
   const dx = player.x - monster.x, dy = player.y - monster.y;
   monster.dist = Math.sqrt(dx * dx + dy * dy);
 
@@ -1304,7 +1305,7 @@ function updateMonster(dt, now) {
     if (p && p.length > 1) { monster.path = p; monster.pathIndex = 1; }
     else monster.path = null;
   }
-  const stepLen = monSpeed * (monster.hasLOS ? sprintMult : 1.0) * dt;
+  const stepLen = monSpeed * (monster.hasLOS ? sprintMult : 1.0) * alarmMult * dt;
   let moved = false;
   if (monster.path && monster.pathIndex < monster.path.length) {
     let remain = stepLen, iter = 0;
