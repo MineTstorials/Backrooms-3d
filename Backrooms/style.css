@@ -134,3 +134,8 @@ body.crimson-level #vig{background:radial-gradient(ellipse 72% 72% at 50% 50%,rg
 body.crimson-alarm #tint{background:linear-gradient(180deg,rgba(255,0,0,.30),rgba(90,0,0,.38));mix-blend-mode:screen;animation:crimsonPulse .32s steps(2,end) infinite}
 body.crimson-alarm #dangerVig{opacity:.42}
 @keyframes crimsonPulse{50%{opacity:.35;filter:brightness(1.8)}}
+
+/* Стелс: приглушённая виньетка и индикатор приседания */
+#crouchStatus{color:#9ed9b0;font-size:11px;letter-spacing:1.5px;text-shadow:0 0 8px #2a8f58;margin-top:3px;min-height:13px}
+body.player-crouching #vig{opacity:.72}
+body.player-crouching #scan{opacity:.32}
