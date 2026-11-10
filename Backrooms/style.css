@@ -122,3 +122,7 @@ html,body{width:100%;height:100%;background:#000;overflow:hidden;
 #hud .echo{margin-top:3px;color:#c9a5e8;font-size:11px;letter-spacing:1.4px;text-shadow:0 0 7px rgba(150,90,210,.55)}
 #hud .echo span{color:#ead7ff;font-weight:700}
 @media(max-width:640px){#hud{font-size:10px;left:9px;bottom:82px}#hud .score{font-size:14px}#inventory{right:8px;bottom:8px;gap:4px}.slot{width:44px;height:44px}#radarCanvas{right:8px;bottom:66px;width:112px;height:112px}}
+
+
+/* Poolrooms: холодный оттенок усиливается во время течения */
+#waterOverlay.pool-surge{background:linear-gradient(180deg,rgba(90,210,255,.13),rgba(20,105,160,.24));filter:saturate(1.35)}
