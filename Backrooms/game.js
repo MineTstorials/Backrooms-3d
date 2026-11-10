@@ -49,6 +49,8 @@ const L2_MON_FIRST_MIN  = 6;
 const L2_MON_FIRST_MAX  = 12;
 const L2_MON_COOL_MIN   = 12;
 const L2_MON_COOL_MAX   = 22;
+const L3_MON_SPEED=6.15,L3_MON_SPRINT_MULT=1.55,L3_MON_LOS_RANGE=38;
+const L3_MON_FIRST_MIN=4,L3_MON_FIRST_MAX=8,L3_MON_COOL_MIN=8,L3_MON_COOL_MAX=15;
 
 const ENERGY_SPAWN_CHANCE = 0.045;
 const ECHO_SPAWN_CHANCE = 0.028;
@@ -72,6 +74,7 @@ const STUN_SCORE = 25;
 const LB_KEY = 'backrooms_lb_v1';
 const PORTAL_SCORE_L1 = 150;
 const PORTAL_SCORE_L2 = 300;
+const PORTAL_SCORE_L3 = 520;
 const SCORE_PER_SEC_L0 = 1;
 const SCORE_PER_SEC_L1 = 2;
 const SCORE_PER_SEC_L2 = 3;
@@ -143,6 +146,7 @@ let timeScale = 1.0;
 const eventSys = { nextTimer: 40 + Math.random() * 20, active: null, timeLeft: 0 };
 const noisePulse = { x: 0, y: 0, t: 0 };
 const poolCurrent = { timer: 26, active: 0, angle: 0 };
+const crimsonAlarm = { timer: 24, active: 0 };
 
 /* ═══════════════════════════════════════════════════════════
    МИР
@@ -171,7 +175,7 @@ function wallAt(x, y) {
     if (hash(bx, by, 777) > 0.82) {
       if (xm >= 3 && xm <= 5 && ym >= 3 && ym <= 5) return true;
     }
-  } else if (currentLevel === 1) {
+  } else if (currentLevel === 1 || currentLevel === 3) {
     if (hash(bx, by, 666) > 0.75) {
       if (xm >= 3 && xm <= 5 && ym >= 3 && ym <= 5) return true;
     }
@@ -1112,7 +1116,7 @@ const monster = {
 function hasLOS(x0, y0, x1, y1) {
   const dx = x1 - x0, dy = y1 - y0;
   const d2 = dx * dx + dy * dy;
-  const range = currentLevel === 2 ? L2_MON_LOS_RANGE : currentLevel === 1 ? L1_MON_LOS_RANGE : MON_LOS_RANGE;
+  const range = currentLevel === 3 ? L3_MON_LOS_RANGE : currentLevel === 2 ? L2_MON_LOS_RANGE : currentLevel === 1 ? L1_MON_LOS_RANGE : MON_LOS_RANGE;
   if (d2 > range * range) return false;
   const steps = Math.ceil(Math.sqrt(d2) * 4);
   for (let i = 1; i < steps; i++) {
@@ -1156,7 +1160,7 @@ function findPath(sx, sy, gx, gy) {
   return path;
 }
 function spawnMonster() {
-  const isL2 = currentLevel === 2, isL1 = currentLevel === 1;
+  const isL2 = currentLevel === 2, isL1 = currentLevel === 1 || currentLevel === 3;
   const minD = isL2 ? 6 : isL1 ? 8 : 10;
   const maxD = isL2 ? 16 : isL1 ? 18 : 20;
   for (let ring = 0; ring < 4; ring++) {
@@ -1205,8 +1209,8 @@ function updateMonster(dt, now) {
     }
     if (monster.partyTimer <= 0) {
       monster.active = false; monster.mode = 'normal'; monster.hat = false;
-      const cm = currentLevel === 2 ? L2_MON_COOL_MIN : currentLevel === 1 ? L1_MON_COOL_MIN : MON_COOL_MIN;
-      const cM = currentLevel === 2 ? L2_MON_COOL_MAX : currentLevel === 1 ? L1_MON_COOL_MAX : MON_COOL_MAX;
+      const cm = currentLevel === 3 ? L3_MON_COOL_MIN : currentLevel === 2 ? L2_MON_COOL_MIN : currentLevel === 1 ? L1_MON_COOL_MIN : MON_COOL_MIN;
+      const cM = currentLevel === 3 ? L3_MON_COOL_MAX : currentLevel === 2 ? L2_MON_COOL_MAX : currentLevel === 1 ? L1_MON_COOL_MAX : MON_COOL_MAX;
       monster.idleTimer = cm + Math.random() * (cM - cm);
     }
     return;
@@ -1225,7 +1229,7 @@ function updateMonster(dt, now) {
       }
       return;
     }
-    const step = (currentLevel === 2 ? L2_MON_SPEED : currentLevel === 1 ? L1_MON_SPEED : MON_SPEED) * 1.6 * dt;
+    const step = (currentLevel === 3 ? L3_MON_SPEED : currentLevel === 2 ? L2_MON_SPEED : currentLevel === 1 ? L1_MON_SPEED : MON_SPEED) * 1.6 * dt;
     const nx = monster.x + fdx / fdist * step;
     const ny = monster.y + fdy / fdist * step;
     if (!solid(nx, monster.y)) monster.x = nx;
@@ -1237,9 +1241,9 @@ function updateMonster(dt, now) {
     if (monster.idleTimer <= 0) spawnMonster();
     return;
   }
-  const isL2 = currentLevel === 2, isL1 = currentLevel === 1;
-  const monSpeed = isL2 ? L2_MON_SPEED : isL1 ? L1_MON_SPEED : MON_SPEED;
-  const sprintMult = isL2 ? L2_MON_SPRINT_MULT : isL1 ? L1_MON_SPRINT_MULT : MON_SPRINT_MULT;
+  const isL2 = currentLevel === 2, isL1 = currentLevel === 1 || currentLevel === 3;
+  const monSpeed = currentLevel === 3 ? L3_MON_SPEED : isL2 ? L2_MON_SPEED : isL1 ? L1_MON_SPEED : MON_SPEED;
+  const sprintMult = currentLevel === 3 ? L3_MON_SPRINT_MULT : isL2 ? L2_MON_SPRINT_MULT : isL1 ? L1_MON_SPRINT_MULT : MON_SPRINT_MULT;
   const dx = player.x - monster.x, dy = player.y - monster.y;
   monster.dist = Math.sqrt(dx * dx + dy * dy);
 
@@ -1457,7 +1461,7 @@ function directionTo(angle) {
 }
 function activatePortal() {
   if (portalActive) return;
-  const targetScore = currentLevel === 0 ? PORTAL_SCORE_L1 : currentLevel === 1 ? PORTAL_SCORE_L2 : Infinity;
+  const targetScore = currentLevel === 0 ? PORTAL_SCORE_L1 : currentLevel === 1 ? PORTAL_SCORE_L2 : currentLevel === 2 ? PORTAL_SCORE_L3 : Infinity;
   if (score < targetScore) return;
   const pbx = Math.floor(player.x / B), pby = Math.floor(player.y / B);
   const candidates = [];
@@ -1483,6 +1487,7 @@ function checkPortal() {
   if (dx * dx + dy * dy < 0.8) {
     if (currentLevel === 0) enterLevel1();
     else if (currentLevel === 1) enterLevel2();
+    else if (currentLevel === 2) enterLevel3();
   }
 }
 function resetToLevel(lvl) {
@@ -1514,15 +1519,18 @@ function resetToLevel(lvl) {
   echoDrops.length = 0; echoCount = 0; echoRewarded = false;
   landedCans.length = 0; thrownCans.length = 0;
   kartRace.active = false;
-  const names = ['LEVEL 0', 'LEVEL 1 — HABITABLE ZONE', 'LEVEL 2 — POOLROOMS'];
+  const names = ['LEVEL 0', 'LEVEL 1 — HABITABLE ZONE', 'LEVEL 2 — POOLROOMS', 'LEVEL 3 — CRIMSON ARCHIVES'];
   levelNameEl.textContent = names[lvl] || 'LEVEL ?';
   monster.active = false; monster.mode = 'normal'; monster.hat = false; monster.stunTimer = 0;
-  if (lvl === 2) monster.idleTimer = L2_MON_FIRST_MIN + Math.random() * (L2_MON_FIRST_MAX - L2_MON_FIRST_MIN);
-  else if (lvl === 1) monster.idleTimer = L1_MON_FIRST_MIN + Math.random() * (L1_MON_FIRST_MAX - L1_MON_FIRST_MIN);
+  crimsonAlarm.active=0; crimsonAlarm.timer=20+Math.random()*12;
+  if (lvl === 3) monster.idleTimer=L3_MON_FIRST_MIN+Math.random()*(L3_MON_FIRST_MAX-L3_MON_FIRST_MIN);
+  else if (lvl === 2) monster.idleTimer=L2_MON_FIRST_MIN+Math.random()*(L2_MON_FIRST_MAX-L2_MON_FIRST_MIN);
+  else if (lvl === 1) monster.idleTimer=L1_MON_FIRST_MIN+Math.random()*(L1_MON_FIRST_MAX-L1_MON_FIRST_MIN);
   else monster.idleTimer = MON_FIRST_MIN + Math.random() * (MON_FIRST_MAX - MON_FIRST_MIN);
 }
 function enterLevel1() { resetToLevel(1); }
 function enterLevel2() { resetToLevel(2); }
+function enterLevel3() { resetToLevel(3); }
 
 /* ═══════════════════════════════════════════════════════════
    КОНСОЛЬ (расширяемая)
@@ -1944,14 +1952,14 @@ function drawSprite(tex, tw, th, wx, wy, sizeH, fl, W, H, px, py, dirX, dirY, pl
   const dEndX = Math.min(W, Math.ceil(centerX + spriteWpx * 0.5));
   const dStartY = Math.max(0, Math.floor(floorY - spriteHpx));
   const dEndY = Math.min(H, Math.ceil(floorY));
-  const fogD = currentLevel === 2 ? 0.03 : currentLevel === 1 ? 0.07 : FOG_D;
+  const fogD = currentLevel === 2 ? 0.03 : currentLevel === 3 ? 0.085 : currentLevel === 1 ? 0.07 : FOG_D;
   let f = ty * fogD;
   if (f > 1) f = 1;
   f = f * f * (3 - 2 * f) * 0.94;
   const kk = (1 - f) * fl;
-  const fr2 = currentLevel === 2 ? 35 * f : currentLevel === 1 ? 18 * f : FOG_R * f;
-  const fg2 = currentLevel === 2 ? 55 * f : currentLevel === 1 ? 20 * f : FOG_G * f;
-  const fb2 = currentLevel === 2 ? 65 * f : currentLevel === 1 ? 24 * f : FOG_B * f;
+  const fr2 = currentLevel === 2 ? 35 * f : currentLevel === 3 ? 54 * f : currentLevel === 1 ? 18 * f : FOG_R * f;
+  const fg2 = currentLevel === 2 ? 55 * f : currentLevel === 3 ? 7 * f : currentLevel === 1 ? 20 * f : FOG_G * f;
+  const fb2 = currentLevel === 2 ? 65 * f : currentLevel === 3 ? 12 * f : currentLevel === 1 ? 24 * f : FOG_B * f;
   const vTop = floorY - spriteHpx;
   for (let x = dStartX; x < dEndX; x++) {
     if (ty >= depth[x]) continue;
@@ -1980,7 +1988,7 @@ function render() {
   const dirX = Math.cos(player.yaw), dirY = Math.sin(player.yaw);
   const planeX = -dirY * PLANE, planeY = dirX * PLANE;
   const horizon = (H * 0.5 + player.bob) | 0;
-  const isL2 = currentLevel === 2, isL1 = currentLevel === 1;
+  const isL2 = currentLevel === 2, isL1 = currentLevel === 1 || currentLevel === 3;
 
   let fl = flicker;
   if (blackoutActive) fl *= 0.08;
@@ -1988,11 +1996,13 @@ function render() {
 
   waterOverlay.style.opacity = isL2 ? '1' : '0';
   waterOverlay.classList.toggle('pool-surge', isL2 && poolCurrent.active > 0);
+  document.body.classList.toggle('crimson-level', currentLevel === 3);
+  document.body.classList.toggle('crimson-alarm', currentLevel === 3 && crimsonAlarm.active > 0);
 
-  const fogD = isL2 ? 0.03 : isL1 ? 0.07 : FOG_D;
-  const fogR = isL2 ? 35 : isL1 ? 18 : FOG_R;
-  const fogG = isL2 ? 55 : isL1 ? 20 : FOG_G;
-  const fogB = isL2 ? 65 : isL1 ? 24 : FOG_B;
+  const fogD = isL2 ? 0.03 : currentLevel === 3 ? 0.085 : isL1 ? 0.07 : FOG_D;
+  const fogR = isL2 ? 35 : currentLevel === 3 ? 54 : isL1 ? 18 : FOG_R;
+  const fogG = isL2 ? 55 : currentLevel === 3 ? 7 : isL1 ? 20 : FOG_G;
+  const fogB = isL2 ? 65 : currentLevel === 3 ? 12 : isL1 ? 24 : FOG_B;
 
   /* ─── стены ─── */
   for (let x = 0; x < W; x++) {
@@ -2494,6 +2504,16 @@ function update(dt, now) {
   updateEvents(dt);
 
   // Периодическое течение Poolrooms: предупреждает игрока и сносит его по залу.
+  if (currentLevel === 3) {
+    if (crimsonAlarm.active > 0) {
+      crimsonAlarm.active=Math.max(0,crimsonAlarm.active-dt);
+      if (crimsonAlarm.active===0) { crimsonAlarm.timer=27+Math.random()*17; if(eventSys.active===null) eventMsgEl.textContent='▰ АВАРИЙНЫЙ СВЕТ ПОГАС'; }
+    } else {
+      crimsonAlarm.timer-=dt;
+      if(crimsonAlarm.timer<=0) { crimsonAlarm.active=7; if(eventSys.active===null) eventMsgEl.textContent='⚠ ТРЕВОГА! ОНО СЛЫШИТ ТЕБЯ!'; }
+    }
+  } else { crimsonAlarm.active=0; crimsonAlarm.timer=24; }
+
   if (currentLevel === 2) {
     if (poolCurrent.active > 0) {
       poolCurrent.active = Math.max(0, poolCurrent.active - dt);
@@ -2572,6 +2592,7 @@ function update(dt, now) {
   if (beer.t > 0) speedMult *= BEER_SLOW;
   if (kartRace.active) speedMult *= 1.6;
   if (currentLevel === 2) speedMult *= 0.85;
+  if (currentLevel === 3 && crimsonAlarm.active > 0) speedMult *= 0.92;
 
   const baseSpeed = currentLevel === 2 ? 2.8 : currentLevel === 1 ? 2.6 : 3.0;
   const speed = baseSpeed * speedMult * dt * timeScale;
@@ -2629,6 +2650,7 @@ function update(dt, now) {
   const t = now * 0.001;
   flicker = 0.945 + 0.055 * Math.sin(t * 8.3) * Math.sin(t * 2.17 + 1.3);
   if (currentLevel === 2) flicker = 0.97 + 0.03 * Math.sin(now * 0.001);
+  else if (currentLevel === 3) flicker = crimsonAlarm.active > 0 ? 0.35 + 0.25 * Math.sin(now * 0.025) : 0.88 + 0.12 * Math.sin(now * 0.004);
   else if (currentLevel === 1) { if (hash((now * 0.03) | 0, 5, 7) > 0.96) flicker *= 0.25; }
   else { if (hash((now * 0.02) | 0, 3, 9) > 0.982) flicker *= 0.42; }
   if (flicker < 0.15) flicker = 0.15;
@@ -2751,10 +2773,10 @@ function loop(now) {
   if (dt > 0.06) dt = 0.06;
   if (dt > 0) update(dt, now);
   render();
-  fpsAcc += dt; fpsCnt++;
-  if (now - fpsT > 400) {
-    fpsEl.textContent = Math.round(fpsCnt / Math.max(fpsAcc, 0.0001));
-    fpsAcc = 0; fpsCnt = 0; fpsT = now;
+  fpsCnt++;
+  if (now - fpsT >= 500) {
+    fpsEl.textContent = String(Math.round(fpsCnt * 1000 / Math.max(1, now - fpsT)));
+    fpsCnt = 0; fpsT = now;
   }
 }
 last = performance.now();
