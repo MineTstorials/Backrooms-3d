@@ -141,6 +141,7 @@ let noclipMode = false;
 let timeScale = 1.0;
 
 const eventSys = { nextTimer: 40 + Math.random() * 20, active: null, timeLeft: 0 };
+const noisePulse = { x: 0, y: 0, t: 0 };
 
 /* ═══════════════════════════════════════════════════════════
    МИР
@@ -1255,6 +1256,14 @@ function updateMonster(dt, now) {
     monster.distractTimer = 0;
   } else {
     monster.lostTimer += dt;
+    if (noisePulse.t > 0 && monster.dist < 14) {
+      const ndx = noisePulse.x - monster.x, ndy = noisePulse.y - monster.y;
+      if (ndx * ndx + ndy * ndy < 14 * 14) {
+        monster.lastSeenX = noisePulse.x; monster.lastSeenY = noisePulse.y;
+        monster.lostTimer = 0;
+        monster.state = 'searching';
+      }
+    }
     if (monster.lostTimer > 2.0) monster.state = 'searching';
     const escaped = (monster.lostTimer > MON_ESCAPE_T && monster.dist > MON_ESCAPE_D) || monster.lostTimer > MON_SEARCH_T;
     if (escaped) {
@@ -2539,6 +2548,7 @@ function update(dt, now) {
   const moving = len > 0;
   if (moving) {
     mx = mx / len * speed; my = my / len * speed;
+    if (canSprint) { noisePulse.x = player.x; noisePulse.y = player.y; noisePulse.t = 1.15; }
     if (canWalk(player.x + mx, player.y)) player.x += mx;
     if (canWalk(player.x, player.y + my)) player.y += my;
     player.bobT += dt * (isFast ? 13 : 8.5);
@@ -2578,6 +2588,7 @@ function update(dt, now) {
   else { if (hash((now * 0.02) | 0, 3, 9) > 0.982) flicker *= 0.42; }
   if (flicker < 0.15) flicker = 0.15;
 
+  if (noisePulse.t > 0) noisePulse.t = Math.max(0, noisePulse.t - dt);
   updateMonster(dt * timeScale, now);
 
   staminaFill.style.width = stamina.cur + '%';
