@@ -1414,6 +1414,12 @@ function checkPortal() {
 function resetToLevel(lvl) {
   currentLevel = lvl;
   portalActive = false;
+  portalMsgTimer = 0;
+  visitedRooms.clear();
+  itemsSeen.clear();
+  lastScanX = -999;
+  lastScanY = -999;
+  if (eventSys.active === null) eventMsgEl.textContent = '';
   let s = findSpawn();
   if (!canWalk(s.x, s.y)) {
     for (let i = 0; i < 500; i++) {
@@ -1465,6 +1471,8 @@ function logLine(text, cls) {
 }
 function openConsole() {
   consoleOpen = true;
+  running = false;
+  clearMovementKeys();
   consoleEl.classList.add('open');
   consoleField.focus();
   if (document.pointerLockElement === canvas) document.exitPointerLock();
@@ -1473,6 +1481,8 @@ function closeConsole() {
   consoleOpen = false;
   consoleEl.classList.remove('open');
   consoleField.value = '';
+  clearMovementKeys();
+  startEl.classList.remove('hidden');
 }
 function runCommand(raw) {
   const line = raw.trim();
@@ -1790,6 +1800,13 @@ function playBreath(tired) {
    ВВОД
    ═══════════════════════════════════════════════════════════ */
 const keys = { w: false, a: false, s: false, d: false, shift: false };
+function clearMovementKeys() {
+  keys.w = false;
+  keys.a = false;
+  keys.s = false;
+  keys.d = false;
+  keys.shift = false;
+}
 
 window.addEventListener('keydown', e => {
   if (consoleOpen) return;
@@ -1799,6 +1816,11 @@ window.addEventListener('keydown', e => {
   if (k === 'a' || k === 'ф' || k === 'arrowleft') keys.a = true;
   if (k === 'd' || k === 'в' || k === 'arrowright') keys.d = true;
   if (k === 'shift') keys.shift = true;
+  // Повтор клавиши нужен только для непрерывного движения, но не для действий.
+  if (e.repeat) {
+    if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
+    return;
+  }
   if (k >= '1' && k <= '5') activateSlot(parseInt(k) - 1);
   if (k === 'e' || k === 'у') useActiveItem();
   if (k === 'f' || k === 'а') {
@@ -1818,6 +1840,10 @@ window.addEventListener('keyup', e => {
   if (k === 'a' || k === 'ф' || k === 'arrowleft') keys.a = false;
   if (k === 'd' || k === 'в' || k === 'arrowright') keys.d = false;
   if (k === 'shift') keys.shift = false;
+});
+window.addEventListener('blur', clearMovementKeys);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) clearMovementKeys();
 });
 document.addEventListener('mousemove', e => {
   if (document.pointerLockElement !== canvas) return;
@@ -2075,6 +2101,13 @@ function render() {
   for (let i = 0; i < landedCans.length; i++) {
     const e = landedCans[i];
     drawSprite(crushedCanTex, CCW, CCH, e.x, e.y, 0.20, fl, W, H, px, py, dirX, dirY, planeX, planeY, horizon);
+  }
+  // Портал находится в свободной точке пола, поэтому его нужно рисовать как спрайт,
+  // а не пытаться подменять им текстуру стены в raycaster.
+  if (portalActive) {
+    const portalSize = 1.35 + Math.sin(performance.now() * 0.004) * 0.08;
+    drawSprite(portalTex, TEX, TEX, portalX, portalY, portalSize, fl, W, H,
+      px, py, dirX, dirY, planeX, planeY, horizon);
   }
   for (let i = 0; i < thrownCans.length; i++) {
     const c = thrownCans[i];
@@ -2585,9 +2618,12 @@ function tryPointerLock(retries = 3) {
   } catch (err) { if (retries > 0) setTimeout(() => tryPointerLock(retries - 1), 600); }
 }
 document.addEventListener('pointerlockchange', () => {
-  if (document.pointerLockElement !== canvas && !consoleOpen) {
-    running = false;
-    startEl.classList.remove('hidden');
+  if (document.pointerLockElement !== canvas) {
+    clearMovementKeys();
+    if (!consoleOpen) {
+      running = false;
+      startEl.classList.remove('hidden');
+    }
   }
 });
 
