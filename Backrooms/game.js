@@ -51,6 +51,9 @@ const L2_MON_COOL_MIN   = 12;
 const L2_MON_COOL_MAX   = 22;
 
 const ENERGY_SPAWN_CHANCE = 0.045;
+const ECHO_SPAWN_CHANCE = 0.028;
+const ECHO_GOAL = 3;
+const ECHO_REWARD = 150;
 const MOP_SPAWN_CHANCE    = 0.010;
 const RADAR_SPAWN_CHANCE  = 0.010;
 const BEER_SPAWN_CHANCE   = 0.005;
@@ -125,6 +128,9 @@ const mopDrops = [];
 const radarDrops = [];
 const beerDrops = [];
 const energyDrops = [];
+const echoDrops = [];
+let echoCount = 0;
+let echoRewarded = false;
 const itemsSeen = new Set();
 const thrownCans = [];
 const landedCans = [];
@@ -373,6 +379,29 @@ const energyTex = new Uint32Array(ENW * ENH);
       } else if (rim) col = pack(240, 240, 240);
       else if (inside) { const v = 0.45 + hash(x, y, 302) * 0.35; col = pack(180 * v, 30 * v, 25 * v); }
       energyTex[y * ENW + x] = col;
+    }
+  }
+})();
+
+const ECHOW = 20, ECHOH = 28;
+const echoTex = new Uint32Array(ECHOW * ECHOH);
+(function buildEchoTexture() {
+  for (let y = 0; y < ECHOH; y++) {
+    for (let x = 0; x < ECHOW; x++) {
+      const fold = x >= 14 && y < 6 && x + y < 20;
+      const paper = x >= 3 && x <= 16 && y >= 2 && y <= 25;
+      let col = 0;
+      if (paper) {
+        const shade = 0.82 + hash(x, y, 1701) * 0.16;
+        col = pack(205 * shade, 194 * shade, 151 * shade);
+        if (x === 3 || x === 16 || y === 2 || y === 25) col = pack(95, 82, 61);
+        if (fold) col = pack(120, 105, 80);
+        if (y === 10 || y === 15 || y === 20) {
+          if (x >= 6 && x <= 13) col = pack(90, 72, 115);
+        }
+        if ((x === 8 || x === 11) && y >= 7 && y <= 8) col = pack(130, 95, 165);
+      }
+      echoTex[y * ECHOW + x] = col;
     }
   }
 })();
@@ -752,6 +781,7 @@ const waterOverlay = document.getElementById('waterOverlay');
 const levelNameEl = document.getElementById('levelName');
 const scoreEl = document.getElementById('scoreVal');
 const energyEl = document.getElementById('energyVal');
+const echoEl = document.getElementById('echoVal');
 const staminaFill = document.getElementById('staminaFill');
 const dangerEl = document.getElementById('dangerVig');
 const boostEl = document.getElementById('boostVig');
@@ -850,6 +880,12 @@ function trySpawnItemsInRoom(bx, by) {
   const key = bx + ',' + by;
   if (itemsSeen.has(key)) return;
   itemsSeen.add(key);
+  const echoRoll = hash(bx, by, 1700);
+  if (echoRoll < ECHO_SPAWN_CHANCE && echoCount + echoDrops.length < ECHO_GOAL) {
+    const ex = bx * B + 1 + hash(bx, by, 1702) * (B - 2);
+    const ey = by * B + 1 + hash(bx, by, 1703) * (B - 2);
+    if (!solid(ex, ey)) echoDrops.push({ x: ex, y: ey });
+  }
   const roll = hash(bx, by, 999);
   let type = null;
   if (roll < ENERGY_SPAWN_CHANCE) type = 'energy';
@@ -910,6 +946,23 @@ function updateItemPickup() {
   pickup(mopDrops, 'mop', () => playPickupSfx(440, 880));
   pickup(radarDrops, 'radar', () => playPickupSfx(520, 1040));
   pickup(beerDrops, 'beer', () => playPickupSfx(330, 660));
+  for (let i = echoDrops.length - 1; i >= 0; i--) {
+    const e = echoDrops[i];
+    const dx = e.x - player.x, dy = e.y - player.y;
+    if (dx * dx + dy * dy < 0.78) {
+      echoDrops.splice(i, 1);
+      echoCount++;
+      score += 35;
+      stamina.cur = Math.min(STAM_MAX, stamina.cur + 25);
+      playPickupSfx(740, 1480);
+      eventMsgEl.textContent = `✧ ЭХО ПАМЯТИ ${echoCount}/${ECHO_GOAL} · +35`;
+      if (echoCount >= ECHO_GOAL && !echoRewarded) {
+        echoRewarded = true;
+        score += ECHO_REWARD;
+        eventMsgEl.textContent = `✧ ВСЕ ЭХО СОБРАНЫ · БОНУС +${ECHO_REWARD}`;
+      }
+    }
+  }
 }
 
 function activateSlot(idx) {
@@ -1436,6 +1489,7 @@ function resetToLevel(lvl) {
   beer.t = 0; radar.t = 0; shield = false;
   puddles.length = 0; mopDrops.length = 0; energyDrops.length = 0;
   radarDrops.length = 0; beerDrops.length = 0;
+  echoDrops.length = 0; echoCount = 0; echoRewarded = false;
   landedCans.length = 0; thrownCans.length = 0;
   kartRace.active = false;
   const names = ['LEVEL 0', 'LEVEL 1 — HABITABLE ZONE', 'LEVEL 2 — POOLROOMS'];
@@ -2086,6 +2140,11 @@ function render() {
     const e = energyDrops[i];
     drawSprite(energyTex, ENW, ENH, e.x, e.y, 0.42, fl, W, H, px, py, dirX, dirY, planeX, planeY, horizon);
   }
+  for (let i = 0; i < echoDrops.length; i++) {
+    const e = echoDrops[i];
+    const pulse = 0.48 + Math.sin(performance.now() * 0.004 + e.x) * 0.05;
+    drawSprite(echoTex, ECHOW, ECHOH, e.x, e.y, pulse, fl, W, H, px, py, dirX, dirY, planeX, planeY, horizon);
+  }
   for (let i = 0; i < mopDrops.length; i++) {
     const e = mopDrops[i];
     drawSprite(mopTex, MOPW, MOPH, e.x, e.y, 0.55, fl, W, H, px, py, dirX, dirY, planeX, planeY, horizon);
@@ -2525,6 +2584,7 @@ function update(dt, now) {
   staminaFill.classList.toggle('exhausted', stamina.exhausted);
   scoreEl.textContent = Math.floor(score);
   energyEl.textContent = energyCollected;
+  echoEl.textContent = `${echoCount}/${ECHO_GOAL}`;
 
   let danger = 0;
   const isParty = monster.mode === 'party_dance' || monster.mode === 'party_approach';
