@@ -800,6 +800,7 @@ const staminaFill = document.getElementById('staminaFill');
 const dangerEl = document.getElementById('dangerVig');
 const boostEl = document.getElementById('boostVig');
 const fpsEl = document.getElementById('fps');
+const crouchEl = document.getElementById('crouchStatus');
 
 let cw = 480, ch = 240;
 let img, buf, wallTop, wallBot, depth;
@@ -1884,13 +1885,14 @@ function playBreath(tired) {
 /* ═══════════════════════════════════════════════════════════
    ВВОД
    ═══════════════════════════════════════════════════════════ */
-const keys = { w: false, a: false, s: false, d: false, shift: false };
+const keys = { w: false, a: false, s: false, d: false, shift: false, ctrl: false };
 function clearMovementKeys() {
   keys.w = false;
   keys.a = false;
   keys.s = false;
   keys.d = false;
   keys.shift = false;
+  keys.ctrl = false;
 }
 
 window.addEventListener('keydown', e => {
@@ -1901,6 +1903,7 @@ window.addEventListener('keydown', e => {
   if (k === 'a' || k === 'ф' || k === 'arrowleft') keys.a = true;
   if (k === 'd' || k === 'в' || k === 'arrowright') keys.d = true;
   if (k === 'shift') keys.shift = true;
+  if (k === 'control') { keys.ctrl = true; e.preventDefault(); }
   // Повтор клавиши нужен только для непрерывного движения, но не для действий.
   if (e.repeat) {
     if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
@@ -1925,6 +1928,7 @@ window.addEventListener('keyup', e => {
   if (k === 'a' || k === 'ф' || k === 'arrowleft') keys.a = false;
   if (k === 'd' || k === 'в' || k === 'arrowright') keys.d = false;
   if (k === 'shift') keys.shift = false;
+  if (k === 'control') keys.ctrl = false;
 });
 window.addEventListener('blur', clearMovementKeys);
 document.addEventListener('visibilitychange', () => {
@@ -2585,7 +2589,8 @@ function update(dt, now) {
   if (boost.t > 0) boost.t -= dt;
 
   const boosted = boost.t > 0;
-  const canSprint = keys.shift && !stamina.exhausted && !boosted;
+  const crouching = keys.ctrl;
+  const canSprint = keys.shift && !stamina.exhausted && !boosted && !crouching;
   const isFast = boosted || canSprint;
   let speedMult = 1.0;
   if (boosted) speedMult = BOOST_MULT;
@@ -2594,6 +2599,7 @@ function update(dt, now) {
   if (kartRace.active) speedMult *= 1.6;
   if (currentLevel === 2) speedMult *= 0.85;
   if (currentLevel === 3 && crimsonAlarm.active > 0) speedMult *= 0.92;
+  if (crouching) speedMult *= 0.52;
 
   const baseSpeed = currentLevel === 2 ? 2.8 : currentLevel === 1 ? 2.6 : 3.0;
   const speed = baseSpeed * speedMult * dt * timeScale;
@@ -2619,7 +2625,7 @@ function update(dt, now) {
     if (canWalk(player.x + mx, player.y)) player.x += mx;
     if (canWalk(player.x, player.y + my)) player.y += my;
     player.bobT += dt * (isFast ? 13 : 8.5);
-    const stepInterval = isFast ? 260 : 480;
+    const stepInterval = isFast ? 260 : crouching ? 920 : 480;
     if (now - lastPlayerStep > stepInterval) {
       lastPlayerStep = now;
       playPlayerStep(isFast);
@@ -2629,7 +2635,7 @@ function update(dt, now) {
     stamina.cur -= STAM_DRAIN * dt;
     if (stamina.cur <= 0) { stamina.cur = 0; stamina.exhausted = true; }
   } else {
-    stamina.cur += (moving ? STAM_REGEN : STAM_IDLE) * dt;
+    stamina.cur += (moving ? (crouching ? STAM_IDLE : STAM_REGEN) : STAM_IDLE) * dt;
     if (stamina.cur > STAM_MAX) stamina.cur = STAM_MAX;
     if (stamina.exhausted && stamina.cur >= STAM_RECOVER) stamina.exhausted = false;
   }
@@ -2659,6 +2665,8 @@ function update(dt, now) {
   if (noisePulse.t > 0) noisePulse.t = Math.max(0, noisePulse.t - dt);
   updateMonster(dt * timeScale, now);
 
+  crouchEl.textContent = crouching ? 'СТЕЛС: ВКЛ' : '';
+  document.body.classList.toggle('player-crouching', crouching);
   staminaFill.style.width = stamina.cur + '%';
   staminaFill.classList.toggle('exhausted', stamina.exhausted);
   scoreEl.textContent = Math.floor(score);
