@@ -126,3 +126,11 @@ html,body{width:100%;height:100%;background:#000;overflow:hidden;
 
 /* Poolrooms: холодный оттенок усиливается во время течения */
 #waterOverlay.pool-surge{background:linear-gradient(180deg,rgba(90,210,255,.13),rgba(20,105,160,.24));filter:saturate(1.35)}
+
+
+/* LEVEL 3 — CRIMSON ARCHIVES */
+body.crimson-level #tint{background:linear-gradient(180deg,rgba(150,8,12,.18),rgba(55,0,5,.22));mix-blend-mode:multiply}
+body.crimson-level #vig{background:radial-gradient(ellipse 72% 72% at 50% 50%,rgba(0,0,0,0) 20%,rgba(35,0,4,.58) 76%,rgba(12,0,0,.98) 100%)}
+body.crimson-alarm #tint{background:linear-gradient(180deg,rgba(255,0,0,.30),rgba(90,0,0,.38));mix-blend-mode:screen;animation:crimsonPulse .32s steps(2,end) infinite}
+body.crimson-alarm #dangerVig{opacity:.42}
+@keyframes crimsonPulse{50%{opacity:.35;filter:brightness(1.8)}}
