@@ -1996,8 +1996,8 @@ function render() {
   const isL2 = currentLevel === 2, isL1 = currentLevel === 1 || currentLevel === 3;
 
   let fl = flicker;
-  if (blackoutActive) fl *= 0.08;
   if (isL2) fl = 0.97 + 0.03 * Math.sin(performance.now() * 0.001);
+  if (blackoutActive) fl *= 0.08;
 
   waterOverlay.style.opacity = isL2 ? '1' : '0';
   waterOverlay.classList.toggle('pool-surge', isL2 && poolCurrent.active > 0);
